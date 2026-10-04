@@ -17,6 +17,7 @@
 #include "functions/net/update.h"
 #include "functions/power/power.h"
 #include "functions/diag/uds.h"
+#include "functions/usb/usb_transport.h"
 
 static AsyncWebServer server(80);
 
@@ -295,5 +296,6 @@ void loop() {
   if (g_ap_dns_running) {
     g_ap_dns.processNextRequest();
   }
+  usbTransportProcess();
   delay(10);
 }

@@ -312,6 +312,36 @@ Pages:
 - **OTA**: firmware/filesystem updates and Wi-Fi settings
 - **Help / About**: onboard documentation and project information
 
+## Windows USB-C Desktop Connection
+
+The firmware now supports a loopback bridge for the existing REST API over the board's USB serial connection. The existing Wi-Fi web server and direct `openhaldex.local` / `192.168.4.1` access remain available.
+
+### What the source establishes
+
+- The firmware target is the LilyGO T-2CAN ESP32-S3 (`platformio.ini`, `include/functions/config/pins.h`).
+- USB CDC-on-boot is enabled and `Serial` starts at 115200 baud. `Serial` is also used for firmware log output.
+- The UI is served from LittleFS and its control/telemetry endpoints are HTTP routes on port 80.
+
+### Windows desktop app
+
+1. Connect the T-2CAN to the PC with a USB-C data cable.
+2. Update the board to firmware built from this source over the existing Wi-Fi/OTA path; older firmware does not implement the USB protocol.
+3. Download and run the Windows installer (`Opdex Setup ... .exe`) from the project's release artifacts. The app and serial bridge are bundled; Node.js and Nativefier are not required. Builds without a project code-signing certificate are unsigned and may show a Windows SmartScreen warning.
+4. Open **Device connection** in the app, select **USB-C (COM port)**, choose the board's COM port, and connect. The UI reports the active transport and firmware version.
+5. To return to Wi-Fi, select **Wi-Fi / openhaldex.local**. An IPv4 address such as `192.168.4.1` can be used instead of the default hostname.
+
+### Build the Windows installer from source
+
+Install Node.js 22.12 or newer, then run `cd desktop-bridge`, `npm.cmd install`, `npm.cmd test`, and `npm.cmd run dist` in PowerShell. The Windows x64 installer is written to `desktop-bridge/dist/`. For development, `npm.cmd run app` launches the desktop app using the checked-in UI.
+
+The desktop app bundles the checked-in UI, starts its local API/serial bridge, and binds that bridge only to `127.0.0.1` on an ephemeral local port. It provides Wi-Fi and USB-C selection/status controls. In USB mode it tunnels the existing HTTP method, path, content type, and body over serial; firmware dispatches the request through the same handler table used by the Wi-Fi HTTP server. The PC does not need to join the board's Wi-Fi network in USB mode. The board's existing Wi-Fi AP remains enabled, so direct Wi-Fi access still works.
+
+### USB protocol and verification notes
+
+The USB protocol is newly defined by this project; it is not an existing LILYGO protocol. Each serial line starts with `OHUSB/1 ` and contains a JSON envelope. A `hello` operation negotiates the protocol version; a `request` operation carries an ID, HTTP method, path, content type, and either a small inline text body or a streamed body length. Streamed bodies use sequenced base64 `chunk` messages and per-chunk acknowledgements, and are temporarily staged in LittleFS. API request/response bodies are limited to 128 KiB; firmware upload requests are limited to 4 MiB and available filesystem space. Firmware serial log output is suppressed while a protocol request is in progress so it cannot corrupt a response frame. The API handler table is shared between the Wi-Fi HTTP server and direct USB dispatch, so route behavior does not depend on Wi-Fi being active.
+
+The remaining hardware/runtime assumption that must be confirmed on the target Windows PC and board is that the board's USB-C connector enumerates the firmware's `Serial` interface as a COM port at 115200 baud. This source does not prove the USB connector's wiring or Windows driver behavior. A USB-only cold-start, API read/write, CAN View, and OTA transfer should be verified on the actual board before relying on this transport; Wi-Fi remains the fallback if a check fails.
+
 ## Control Modes
 
 ### Lock

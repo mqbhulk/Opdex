@@ -22,6 +22,179 @@ const ratioLine = document.querySelector(".ratio-line");
 const SETUP_PROFILE_KEY = "ohSetupProfile";
 let lastLockRearBias = 50;
 
+async function initializeConnectionSelector() {
+  let status;
+  try {
+    const response = await fetch("/bridge/status", { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+    status = await response.json();
+  } catch {
+    return;
+  }
+
+  const headerIcons = document.querySelector(".header-icons");
+  const wifiIcon = document.querySelector(".wifi-icon");
+  if (!headerIcons) {
+    return;
+  }
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "header-btn connection-toggle";
+  toggle.setAttribute("aria-haspopup", "dialog");
+  headerIcons.insertBefore(toggle, wifiIcon || null);
+  if (wifiIcon) {
+    wifiIcon.hidden = true;
+  }
+
+  const dialog = document.createElement("dialog");
+  dialog.className = "connection-dialog";
+  dialog.setAttribute("aria-labelledby", "connection-title");
+  dialog.innerHTML = `
+    <form method="dialog" class="connection-form">
+      <h2 id="connection-title">Device connection</h2>
+      <label class="ui-field">Transport
+        <select id="connectionMode" class="ui-input">
+          <option value="usb">USB-C (COM port)</option>
+          <option value="wifi">Wi-Fi / openhaldex.local</option>
+        </select>
+      </label>
+      <label class="ui-field" id="connectionPortField">USB serial port
+        <select id="connectionPort" class="ui-input"></select>
+      </label>
+      <label class="ui-field" id="connectionHostField" hidden>Wi-Fi device host
+        <input id="connectionHost" class="ui-input" type="text" maxlength="253" />
+      </label>
+      <p id="connectionDescription" class="connection-description" role="status"></p>
+      <p id="connectionError" class="connection-error" role="alert" hidden></p>
+      <div class="connection-actions">
+        <button type="button" id="connectionCancel" class="ui-btn secondary">Cancel</button>
+        <button type="button" id="connectionApply" class="ui-btn">Connect</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dialog);
+
+  const modeField = dialog.querySelector("#connectionMode");
+  const portField = dialog.querySelector("#connectionPortField");
+  const portSelect = dialog.querySelector("#connectionPort");
+  const hostField = dialog.querySelector("#connectionHostField");
+  const hostInput = dialog.querySelector("#connectionHost");
+  const description = dialog.querySelector("#connectionDescription");
+  const errorMessage = dialog.querySelector("#connectionError");
+  const apply = dialog.querySelector("#connectionApply");
+
+  function renderConnection() {
+    const usb = status.mode === "usb" && status.usb?.connected;
+    const wifiConnected = status.mode === "wifi" && status.wifiConnected;
+    const label = usb
+      ? `USB - ${status.usb.port}`
+      : `Wi-Fi${wifiConnected ? "" : " - Offline"}`;
+    toggle.textContent = label;
+    toggle.title = label;
+    toggle.setAttribute("aria-label", `Device connection: ${label}`);
+    description.textContent = usb
+      ? `USB connected on ${status.usb.port}${status.usb.version ? ` (firmware ${status.usb.version})` : ""}.`
+      : wifiConnected
+        ? `Wi-Fi connected to ${status.host || "openhaldex.local"}.`
+        : `Wi-Fi selected, but ${status.host || "openhaldex.local"} is not reachable.`;
+    modeField.value = status.mode === "usb" ? "usb" : "wifi";
+    hostInput.value = status.host || "openhaldex.local";
+  }
+
+  function renderFields() {
+    const useUsb = modeField.value === "usb";
+    portField.hidden = !useUsb;
+    hostField.hidden = useUsb;
+    apply.textContent = useUsb ? "Connect USB" : "Use Wi-Fi";
+  }
+
+  async function refreshPorts() {
+    const response = await fetch("/bridge/ports", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Port scan failed (HTTP ${response.status}).`);
+    }
+    const result = await response.json();
+    const selected = status.usb?.port || portSelect.value;
+    portSelect.replaceChildren();
+    for (const port of result.ports || []) {
+      const option = document.createElement("option");
+      option.value = port.path;
+      option.textContent = `${port.path}${port.manufacturer ? ` - ${port.manufacturer}` : ""}`;
+      portSelect.appendChild(option);
+    }
+    if (selected && [...portSelect.options].some((option) => option.value === selected)) {
+      portSelect.value = selected;
+    }
+    if (portSelect.options.length === 0) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No serial ports found";
+      portSelect.appendChild(option);
+    }
+  }
+
+  toggle.addEventListener("click", async () => {
+    errorMessage.hidden = true;
+    renderFields();
+    try {
+      await refreshPorts();
+    } catch (error) {
+      errorMessage.textContent = error.message;
+      errorMessage.hidden = false;
+    }
+    dialog.showModal();
+  });
+  modeField.addEventListener("change", renderFields);
+  dialog.querySelector("#connectionCancel").addEventListener("click", () => dialog.close());
+  apply.addEventListener("click", async () => {
+    errorMessage.hidden = true;
+    apply.disabled = true;
+    try {
+      const selectedMode = modeField.value;
+      const payload =
+        selectedMode === "usb"
+          ? { mode: "usb", port: portSelect.value }
+          : { mode: "wifi", host: hostInput.value.trim() };
+      const response = await fetch("/bridge/connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || `Connection failed (HTTP ${response.status}).`);
+      }
+      status = { ...status, ...result };
+      if (result.usb) {
+        status.usb = result.usb;
+      }
+      renderConnection();
+      dialog.close();
+    } catch (error) {
+      errorMessage.textContent = error.message;
+      errorMessage.hidden = false;
+    } finally {
+      apply.disabled = false;
+    }
+  });
+
+  renderConnection();
+  renderFields();
+  window.setInterval(async () => {
+    try {
+      const response = await fetch("/bridge/status", { cache: "no-store" });
+      if (response.ok) {
+        status = await response.json();
+        renderConnection();
+      }
+    } catch {
+      // Keep the last known transport status visible if the local bridge restarts.
+    }
+  }, 3000);
+}
+
 function setMenuState(isOpen) {
   if (!slideMenu || !menuBackdrop) {
     return;
@@ -5268,3 +5441,5 @@ function initOtaPage() {
   refreshUpdate();
   setInterval(refreshUpdate, 2000);
 }
+
+initializeConnectionSelector();

@@ -1,6 +1,8 @@
 .pio
 .vscode/*
 !.vscode/extensions.json
+/desktop-bridge/node_modules/
+/desktop-bridge/dist/
 
 # UI development folder and can dump viewer
 data/ui-dev/

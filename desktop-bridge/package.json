@@ -1,0 +1,75 @@
+{
+  "name": "opdex-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows desktop application for OpenHaldex-S3",
+  "productName": "Opdex",
+  "author": "OpenHaldex contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mqbhulk/Opdex.git"
+  },
+  "main": "desktop-main.js",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "app": "electron .",
+    "dist": "electron-builder --win nsis",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "serialport": "^12.0.0"
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "dev.openhaldex.opdex",
+    "productName": "Opdex",
+    "publish": null,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "desktop-main.js",
+      "server.js",
+      "serial-bridge.js",
+      "bridge-utils.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../data",
+        "to": "data",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "allowScripts": {
+    "@serialport/bindings-cpp@12.0.1": true,
+    "electron@44.5.1": true,
+    "electron-winstaller@5.4.0": true
+  }
+}
