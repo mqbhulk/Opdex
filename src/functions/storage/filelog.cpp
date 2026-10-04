@@ -25,6 +25,7 @@ static const uint8_t LOG_FILE_ROTATIONS = 4;
 
 static SemaphoreHandle_t filelog_mutex = nullptr;
 static bool filelog_ready = false;
+static volatile bool filelog_serial_protocol_active = false;
 
 static bool filelog_level_equals(const char* level, const char* expected) {
   if (!level || !expected) {
@@ -114,10 +115,14 @@ static bool filelog_should_emit_file(const char* level, const char* tag) {
 }
 
 bool filelogShouldSerialEmit(const char* level, const char* tag) {
-  if (!logSerialEnabled) {
+  if (!logSerialEnabled || filelog_serial_protocol_active) {
     return false;
   }
   return filelog_should_emit_core(level, tag);
+}
+
+void filelogSetSerialProtocolActive(bool active) {
+  filelog_serial_protocol_active = active;
 }
 
 static String filelog_sanitize_line(const String& in) {

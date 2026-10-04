@@ -7,6 +7,7 @@
 void filelogInit();
 
 bool filelogShouldSerialEmit(const char* level, const char* tag);
+void filelogSetSerialProtocolActive(bool active);
 
 void filelogPrintf(const char* level, const char* tag, const char* fmt, ...);
 
