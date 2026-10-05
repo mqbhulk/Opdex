@@ -12,7 +12,7 @@ The project supports Haldex generations **1, 2, 4, and 5**. VAG did not use Gen 
 
 Designed to be easy to build, configure, and use, OpenHaldex-S3 requires no soldering or advanced electrical experience.
 
-Current release: **v1.1**. This release includes Gen 5 / MQB support, parked sleep power saving for vehicles that keep the controller powered from battery after ignition-off, and expanded Haldex diagnostics.
+Current release: **v1.1.1**. This release fixes a T-CAN2 boot-loop (`TG0WDT_SYS_RST` watchdog reset right after the ROM bootloader) caused by a QIO/DIO flash mode mismatch; prior releases included Gen 5 / MQB support, parked sleep power saving for vehicles that keep the controller powered from battery after ignition-off, and expanded Haldex diagnostics.
 
 ## Open Source And Provenance
 
@@ -438,8 +438,8 @@ The OTA updater checks:
 
 The latest metadata points to versioned release assets such as:
 
-- `https://openhaldex.dev/release/s3/v1.1/firmware.bin`
-- `https://openhaldex.dev/release/s3/v1.1/littlefs.bin`
+- `https://openhaldex.dev/release/s3/v1.1.1/firmware.bin`
+- `https://openhaldex.dev/release/s3/v1.1.1/littlefs.bin`
 
 OTA can update both firmware and LittleFS when release assets are available.
 

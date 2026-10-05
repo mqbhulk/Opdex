@@ -1,6 +1,6 @@
 {
-  "version": "v1.1",
-  "notes": "OpenHaldex-S3 v1.1 adds Gen 5 parked sleep power saving",
+  "version": "v1.1.1",
+  "notes": "OpenHaldex-S3 v1.1.1 fixes a T-CAN2 boot-loop (TG0WDT_SYS_RST) by switching flash read mode from QIO to DIO",
   "firmware": "firmware.bin",
   "filesystem": "littlefs.bin"
 }

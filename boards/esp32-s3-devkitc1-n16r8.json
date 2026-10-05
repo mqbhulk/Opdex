@@ -2,7 +2,7 @@
   "build": {
     "arduino": {
       "partitions": "default_16MB.csv",
-      "memory_type": "qio_opi"
+      "memory_type": "dio_opi"
     },
     "core": "esp32",
     "extra_flags": [
@@ -13,7 +13,7 @@
     ],
     "f_cpu": "240000000L",
     "f_flash": "80000000L",
-    "flash_mode": "qio",
+    "flash_mode": "dio",
     "psram_type": "opi",
     "hwids": [["0x303A", "0x1001"]],
     "mcu": "esp32s3",
